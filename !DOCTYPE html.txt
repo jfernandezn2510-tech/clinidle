@@ -1,0 +1,1961 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CliniDle | Entrenamiento de Diagnóstico Clínico DSM-5-TR</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter & JetBrains Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        slate: {
+                            850: '#172033',
+                            900: '#0f172a',
+                            950: '#090d16',
+                        }
+                    },
+                    animation: {
+                        'fade-in': 'fadeIn 0.35s ease-out forwards',
+                        'slide-up': 'slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+                        'pulse-subtle': 'pulseSubtle 2s infinite',
+                    },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: '0' },
+                            '100%': { opacity: '1' },
+                        },
+                        slideUp: {
+                            '0%': { opacity: '0', transform: 'translateY(12px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' },
+                        },
+                        pulseSubtle: {
+                            '0%, 100%': { opacity: '1' },
+                            '50%': { opacity: '0.75' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Personalización sutil de barra de desplazamiento */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.5);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(71, 85, 105, 0.6);
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(100, 116, 139, 0.8);
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 font-sans antialiased min-h-screen flex flex-col selection:bg-emerald-500/30 selection:text-emerald-200">
+
+    <!-- Notificación Toast Flotante -->
+    <div id="toast-container" class="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 pointer-events-none transition-all duration-300 opacity-0 translate-y-4">
+        <div id="toast-content" class="bg-slate-800 border border-slate-700 text-slate-100 px-4 py-3 rounded-xl shadow-2xl flex items-center gap-2.5 text-sm font-medium">
+            <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-400 shrink-0"></i>
+            <span id="toast-message">Mensaje</span>
+        </div>
+    </div>
+
+    <!-- Header / Barra Superior -->
+    <header class="sticky top-0 z-30 bg-slate-950/85 backdrop-blur-md border-b border-slate-800/80">
+        <div class="max-w-3xl mx-auto px-4 h-16 flex items-center justify-between gap-2">
+            <!-- Logo y Marca -->
+            <div class="flex items-center gap-2.5">
+                <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-950/50">
+                    <i data-lucide="stethoscope" class="w-5 h-5 text-white"></i>
+                </div>
+                <div>
+                    <div class="flex items-center gap-1.5">
+                        <h1 class="font-extrabold text-lg tracking-tight text-white">Clini<span class="text-emerald-400">Dle</span></h1>
+                        <span class="text-[10px] font-mono uppercase tracking-wider px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700/70">DSM-5-TR</span>
+                    </div>
+                    <p class="text-[11px] text-slate-400 hidden sm:block leading-none">Simulador de Entrevista Clínica</p>
+                </div>
+            </div>
+
+            <!-- Selector de Casos (Archivo + Caso del Día) -->
+            <div class="flex items-center gap-2">
+                <div class="relative">
+                    <select id="case-selector" aria-label="Seleccionar caso clínico" class="appearance-none bg-slate-900 hover:bg-slate-800/80 border border-slate-700/80 text-slate-200 text-xs sm:text-sm font-medium rounded-xl pl-3 pr-8 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-colors cursor-pointer">
+                        <!-- Opciones generadas por JS -->
+                    </select>
+                    <i data-lucide="chevron-down" class="w-4 h-4 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+                </div>
+
+                <!-- Racha Actual -->
+                <div title="Racha de diagnósticos acertados" class="flex items-center gap-1 bg-slate-900 border border-slate-800 px-2.5 py-1.5 rounded-xl text-xs font-semibold">
+                    <span class="text-amber-400">🔥</span>
+                    <span id="streak-counter" class="text-slate-200 font-mono">0</span>
+                </div>
+
+                <!-- Botón Estadísticas -->
+                <button id="btn-stats" title="Estadísticas" class="p-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white transition-colors">
+                    <i data-lucide="bar-chart-3" class="w-4 h-4 sm:w-5 sm:h-5"></i>
+                </button>
+
+                <!-- Botón Ayuda / Cómo jugar -->
+                <button id="btn-help" title="Cómo jugar" class="p-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white transition-colors">
+                    <i data-lucide="help-circle" class="w-4 h-4 sm:w-5 sm:h-5"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Contenedor Principal -->
+    <main class="flex-1 max-w-4xl w-full mx-auto px-4 py-5 sm:py-7 flex flex-col gap-5">
+
+        <!-- Cabecera del Expediente Clínico y Reloj de Consulta -->
+        <section class="bg-slate-900/80 border border-slate-800/90 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
+            <div class="flex items-center gap-3">
+                <div class="w-11 h-11 rounded-xl bg-slate-800 border border-slate-700/70 flex items-center justify-center text-emerald-400 font-mono font-bold text-sm shrink-0" id="case-badge">
+                    #01
+                </div>
+                <div>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <h2 id="case-title" class="font-bold text-base sm:text-lg text-white">Expediente Clínico #01</h2>
+                        <span id="daily-tag" class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">Caso del Día</span>
+                    </div>
+                    <p class="text-xs text-slate-400 mt-0.5">Indaga mediante preguntas clínicas y formula tu diagnóstico antes de agotar la sesión.</p>
+                </div>
+            </div>
+
+            <!-- Indicadores de Tiempo de Consulta (45 min) e Intentos (3) -->
+            <div class="flex items-center justify-between sm:justify-end gap-4 border-t sm:border-t-0 border-slate-800/80 pt-3 sm:pt-0">
+                <!-- Tiempo de Consulta -->
+                <div class="bg-slate-950/90 border border-slate-800 px-3 py-2 rounded-xl flex items-center gap-2.5">
+                    <i data-lucide="clock" id="clock-icon" class="w-4 h-4 text-emerald-400"></i>
+                    <div>
+                        <span class="text-[10px] uppercase tracking-wider text-slate-400 block font-semibold leading-none">Consulta</span>
+                        <span id="session-time-text" class="text-sm font-mono font-bold text-white mt-0.5 block">45 min</span>
+                    </div>
+                </div>
+
+                <!-- Intentos de Diagnóstico -->
+                <div class="bg-slate-950/90 border border-slate-800 px-3 py-2 rounded-xl">
+                    <span class="text-[10px] uppercase tracking-wider text-slate-400 block font-semibold leading-none">Hipótesis</span>
+                    <div id="attempts-dots" class="flex items-center gap-1.5 mt-1.5">
+                        <!-- 3 indicadores generados por JS -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Ficha de Triaje Inicial -->
+        <section aria-label="Ficha de triaje" class="bg-gradient-to-br from-slate-900 via-slate-900 to-slate-850 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-md">
+            <div class="flex flex-wrap items-center justify-between gap-2 pb-3 mb-3 border-b border-slate-800/80">
+                <div class="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-emerald-400">
+                    <i data-lucide="clipboard-list" class="w-4 h-4"></i>
+                    <span>Ficha de Triaje • Admisión</span>
+                </div>
+                <span id="triage-demographics" class="text-xs font-mono bg-slate-950 border border-slate-800 text-slate-300 px-2.5 py-1 rounded-lg">
+                    Paciente
+                </span>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5 text-sm">
+                <div class="bg-slate-950/60 border border-slate-800/70 rounded-xl p-3.5">
+                    <span class="text-[11px] font-semibold uppercase tracking-wider text-slate-400 block mb-1">Motivo de Consulta</span>
+                    <p id="triage-chief-complaint" class="text-slate-100 leading-relaxed"></p>
+                </div>
+                <div class="bg-slate-950/60 border border-slate-800/70 rounded-xl p-3.5">
+                    <span class="text-[11px] font-semibold uppercase tracking-wider text-slate-400 block mb-1">Observación en Sala de Espera</span>
+                    <p id="triage-observation" class="text-slate-300 leading-relaxed"></p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Bitácora de Notas Clínicas Recopiladas (Hallazgos Clave / Descartes) -->
+        <section id="notes-log-section" class="bg-slate-900/70 border border-slate-800 rounded-2xl p-4 shadow-sm">
+            <div class="flex items-center justify-between gap-2 mb-2.5">
+                <div class="flex items-center gap-2">
+                    <i data-lucide="file-check-2" class="w-4 h-4 text-amber-400"></i>
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-slate-200">Bitácora de Hallazgos Clínicos</h3>
+                </div>
+                <span id="key-findings-counter" class="text-[11px] font-mono bg-slate-950 border border-slate-800 text-slate-400 px-2 py-0.5 rounded-md">
+                    0 hallazgos clave
+                </span>
+            </div>
+            <div id="notes-log-list" class="flex flex-col gap-2">
+                <p class="text-xs text-slate-500 italic py-1">Aún no has recopilado hallazgos determinantes. Explora las áreas clínicas abajo para descubrir criterios diagnósticos y descartes.</p>
+            </div>
+        </section>
+
+        <!-- Zona Activa de Entrevista Clínica (Oculta al finalizar el caso) -->
+        <div id="active-session-area" class="flex flex-col gap-5">
+
+            <!-- Panel de Exploración Clínica por Áreas -->
+            <section class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-lg">
+                <!-- Barra Superior de Pestañas de Exploración -->
+                <div class="bg-slate-950/70 border-b border-slate-800 p-2 grid grid-cols-2 sm:grid-cols-4 gap-1.5" role="tablist" aria-label="Áreas de exploración clínica">
+                    <button type="button" data-tab="anamnesis" class="tab-btn active flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all bg-emerald-600 text-white shadow">
+                        <i data-lucide="history" class="w-3.5 h-3.5 shrink-0"></i>
+                        <span class="truncate">Anamnesis</span>
+                    </button>
+                    <button type="button" data-tab="sintomas" class="tab-btn flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all text-slate-400 hover:text-white hover:bg-slate-800/70">
+                        <i data-lucide="activity" class="w-3.5 h-3.5 shrink-0"></i>
+                        <span class="truncate">Sintomatología</span>
+                    </button>
+                    <button type="button" data-tab="examen_mental" class="tab-btn flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all text-slate-400 hover:text-white hover:bg-slate-800/70">
+                        <i data-lucide="brain" class="w-3.5 h-3.5 shrink-0"></i>
+                        <span class="truncate">Examen Mental</span>
+                    </button>
+                    <button type="button" data-tab="descartes" class="tab-btn flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all text-slate-400 hover:text-white hover:bg-slate-800/70">
+                        <i data-lucide="shield-alert" class="w-3.5 h-3.5 shrink-0"></i>
+                        <span class="truncate">Médico / Riesgo</span>
+                    </button>
+                </div>
+
+                <!-- Buscador / Filtro Rápido de Preguntas -->
+                <div class="p-3.5 sm:p-4 border-b border-slate-800/70 bg-slate-900/50">
+                    <div class="relative">
+                        <i data-lucide="search" class="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+                        <input
+                            type="text"
+                            id="question-filter-input"
+                            placeholder="Filtrar preguntas o escribir palabra clave (ej. sueño, sustancias, tiempo, voces, abandono)..."
+                            class="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500/70 rounded-xl pl-10 pr-8 py-2.5 text-xs sm:text-sm text-slate-200 placeholder-slate-500 focus:outline-none transition-colors"
+                        >
+                        <button type="button" id="clear-question-filter" class="hidden absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 p-1">
+                            <i data-lucide="x" class="w-3.5 h-3.5"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Lista de Preguntas Disponibles en la Pestaña Actual -->
+                <div id="questions-list-container" class="p-3.5 sm:p-4 flex flex-col gap-2.5">
+                    <!-- Preguntas renderizadas por JS -->
+                </div>
+            </section>
+
+            <!-- Registro Cronológico de la Entrevista (Diálogo y Hallazgos) -->
+            <section id="transcript-section" class="hidden flex-col gap-2.5 animate-fade-in">
+                <div class="flex items-center justify-between px-1">
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                        <i data-lucide="message-square-text" class="w-3.5 h-3.5 text-emerald-400"></i>
+                        Registro de la Sesión Actual
+                    </h3>
+                    <span id="questions-asked-count" class="text-[11px] font-mono text-slate-500">0 preguntas realizadas</span>
+                </div>
+                <div id="transcript-list" class="flex flex-col gap-3">
+                    <!-- Intercambios paciente-clínico -->
+                </div>
+            </section>
+
+            <!-- Panel para Emitir Diagnóstico Definitivo -->
+            <section id="input-panel" class="bg-slate-900 border border-emerald-500/30 rounded-2xl p-4 sm:p-5 shadow-xl relative">
+                <div class="flex flex-wrap items-center justify-between gap-2 mb-2.5">
+                    <label for="diagnosis-search" class="text-xs font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
+                        <i data-lucide="stethoscope" class="w-4 h-4"></i>
+                        Emitir Impresión Diagnóstica (DSM-5-TR)
+                    </label>
+                    <span id="attempts-remaining-text" class="text-xs font-mono text-slate-400">3 intentos disponibles</span>
+                </div>
+
+                <!-- Input con Autocompletado -->
+                <div class="relative">
+                    <input 
+                        type="text" 
+                        id="diagnosis-search" 
+                        autocomplete="off"
+                        placeholder="Busca el trastorno definitivo (ej. Bipolar II, TOC, Esquizofreniforme, TEPT, Límite...)" 
+                        class="w-full bg-slate-950 border border-slate-700 focus:border-emerald-500 rounded-xl px-4 py-3.5 text-sm sm:text-base text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/25 transition-all pr-10"
+                    >
+                    <button id="clear-search" type="button" class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 p-1">
+                        <i data-lucide="x" class="w-4 h-4"></i>
+                    </button>
+
+                    <!-- Dropdown de Resultados Filtrados -->
+                    <div id="autocomplete-dropdown" class="hidden absolute left-0 right-0 bottom-full mb-2 sm:bottom-auto sm:top-full sm:mt-2 sm:mb-0 max-h-64 overflow-y-auto bg-slate-900 border border-slate-700 rounded-xl shadow-2xl z-40 divide-y divide-slate-800/80">
+                        <!-- Opciones inyectadas por JS -->
+                    </div>
+                </div>
+
+                <!-- Historial de Hipótesis Fallidas -->
+                <div id="failed-guesses-container" class="hidden mt-3 flex flex-col gap-2">
+                    <!-- Intentos fallidos previos -->
+                </div>
+
+                <!-- Botones de Acción -->
+                <div class="flex flex-col sm:flex-row gap-2.5 mt-3.5">
+                    <button 
+                        id="btn-submit-guess" 
+                        disabled
+                        class="flex-1 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-800 disabled:text-slate-500 disabled:cursor-not-allowed text-white font-semibold py-3 px-4 rounded-xl transition-all flex items-center justify-center gap-2 text-sm shadow-lg shadow-emerald-950/30"
+                    >
+                        <i data-lucide="check-circle-2" class="w-4 h-4"></i>
+                        Confirmar Diagnóstico Definitivo
+                    </button>
+
+                    <button 
+                        id="btn-conclude-case" 
+                        type="button"
+                        class="sm:w-auto bg-slate-800 hover:bg-slate-750 border border-slate-700 text-slate-300 hover:text-white font-medium py-3 px-4 rounded-xl transition-all flex items-center justify-center gap-2 text-xs sm:text-sm"
+                    >
+                        <i data-lucide="flag" class="w-4 h-4 text-rose-400"></i>
+                        <span>Finalizar y Ver Supervisión</span>
+                    </button>
+                </div>
+            </section>
+        </div>
+
+        <!-- Pantalla de "Supervisión Clínica / Autopsia Diagnóstica" (Se muestra al finalizar el caso) -->
+        <section id="autopsy-panel" class="hidden animate-slide-up bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl">
+            <!-- Banner Superior Resultado -->
+            <div id="autopsy-banner" class="p-5 sm:p-6 border-b border-slate-800">
+                <div class="flex flex-wrap items-start justify-between gap-4">
+                    <div>
+                        <div class="flex flex-wrap items-center gap-2 mb-1.5">
+                            <span id="result-badge" class="text-xs font-bold uppercase tracking-wider px-2.5 py-1 rounded-full">
+                                Diagnóstico Acertado
+                            </span>
+                            <span id="clinical-rank-badge" class="text-xs font-bold px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                                🏅 Clínico Experto
+                            </span>
+                        </div>
+                        <h2 id="autopsy-diagnosis" class="text-xl sm:text-2xl font-extrabold text-white mt-1.5">Trastorno...</h2>
+                        <div class="flex flex-wrap items-center gap-2 mt-2">
+                            <span id="autopsy-code" class="text-xs font-mono bg-slate-950/70 text-emerald-400 border border-emerald-500/30 px-2.5 py-0.5 rounded-md">CIE-10 / DSM-5-TR</span>
+                            <span id="autopsy-category" class="text-xs text-slate-300 bg-slate-800/90 px-2.5 py-0.5 rounded-md">Categoría DSM-5-TR</span>
+                        </div>
+                    </div>
+
+                    <!-- Botón Compartir Estilo Wordle -->
+                    <button id="btn-share" class="w-full sm:w-auto bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-5 py-3 rounded-xl transition-all flex items-center justify-center gap-2 text-sm shadow-lg shadow-emerald-950/50 active:scale-95">
+                        <i data-lucide="share-2" class="w-4 h-4"></i>
+                        Compartir Supervisión
+                    </button>
+                </div>
+
+                <!-- Métricas de Eficiencia de Entrevista -->
+                <div class="grid grid-cols-3 gap-2.5 mt-5">
+                    <div class="bg-slate-950/80 border border-slate-800/90 rounded-xl p-3 text-center">
+                        <span class="text-[10px] uppercase tracking-wider text-slate-400 block">Tiempo Usado</span>
+                        <span id="summary-time-used" class="text-base sm:text-lg font-mono font-bold text-white mt-0.5 block">15/45 min</span>
+                    </div>
+                    <div class="bg-slate-950/80 border border-slate-800/90 rounded-xl p-3 text-center">
+                        <span class="text-[10px] uppercase tracking-wider text-slate-400 block">Criterios Clave</span>
+                        <span id="summary-clues-found" class="text-base sm:text-lg font-mono font-bold text-emerald-400 mt-0.5 block">3/4</span>
+                    </div>
+                    <div class="bg-slate-950/80 border border-slate-800/90 rounded-xl p-3 text-center">
+                        <span class="text-[10px] uppercase tracking-wider text-slate-400 block">Eficiencia</span>
+                        <span id="summary-efficiency" class="text-base sm:text-lg font-mono font-bold text-amber-400 mt-0.5 block">92%</span>
+                    </div>
+                </div>
+
+                <!-- Vista Previa de Tarjeta Compartible -->
+                <div class="mt-4 bg-slate-950/80 border border-slate-800/90 rounded-xl p-3 font-mono text-xs text-slate-300 flex items-center justify-between gap-2">
+                    <span id="share-preview-text" class="truncate">🏥 CliniDle #01 | ⏱️ 15m | 🔍 3/4 | 🟩⬜⬜ | 🔥 1</span>
+                    <span class="text-[10px] text-slate-500 shrink-0">Sin spoilers</span>
+                </div>
+            </div>
+
+            <!-- Cuerpo de la Supervisión Clínica -->
+            <div class="p-5 sm:p-6 flex flex-col gap-6">
+                <!-- Evaluación de Calidad de la Entrevista -->
+                <div>
+                    <h3 class="text-sm font-bold text-sky-400 flex items-center gap-2 mb-3">
+                        <i data-lucide="clipboard-check" class="w-4 h-4"></i>
+                        Evaluación de tu Entrevista Clínica (Preguntas Clave)
+                    </h3>
+                    <div id="interview-audit-list" class="flex flex-col gap-2.5 text-sm">
+                        <!-- Desglose de preguntas clave descubiertas vs omitidas -->
+                    </div>
+                </div>
+
+                <!-- Por qué SÍ cumple los criterios -->
+                <div class="border-t border-slate-800/80 pt-5">
+                    <h3 class="text-sm font-bold text-emerald-400 flex items-center gap-2 mb-3">
+                        <i data-lucide="check-circle-2" class="w-4 h-4"></i>
+                        Criterios Diagnósticos DSM-5-TR Confirmados
+                    </h3>
+                    <ul id="autopsy-criteria-list" class="space-y-2 text-sm text-slate-300">
+                        <!-- Items generados por JS -->
+                    </ul>
+                </div>
+
+                <!-- Diagnóstico Diferencial: Por qué NO eran otros trastornos -->
+                <div class="border-t border-slate-800/80 pt-5">
+                    <h3 class="text-sm font-bold text-amber-400 flex items-center gap-2 mb-3">
+                        <i data-lucide="git-compare" class="w-4 h-4"></i>
+                        Diagnóstico Diferencial (¿Por qué NO era...?)
+                    </h3>
+                    <div id="autopsy-differential-list" class="grid grid-cols-1 gap-3">
+                        <!-- Tarjetas diferenciales generadas por JS -->
+                    </div>
+                </div>
+
+                <!-- Botón Siguiente Caso -->
+                <div class="border-t border-slate-800/80 pt-4 flex justify-end">
+                    <button id="btn-next-case" class="w-full sm:w-auto bg-slate-800 hover:bg-slate-700 text-white font-semibold px-5 py-2.5 rounded-xl transition-colors flex items-center justify-center gap-2 text-sm">
+                        <span>Atender Siguiente Paciente</span>
+                        <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer Discreto -->
+    <footer class="border-t border-slate-900 py-5 px-4 text-center text-xs text-slate-500">
+        <p>CliniDle • Simulador educativo de entrevista y razonamiento clínico basado en criterios del DSM-5-TR.</p>
+        <p class="mt-1 text-[11px] text-slate-600">Casos ficticios con fines académicos. No sustituye el juicio clínico profesional.</p>
+    </footer>
+
+    <!-- Modal: ¿Cómo Jugar? -->
+    <div id="modal-help" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full p-5 sm:p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+                <div class="flex items-center gap-2">
+                    <i data-lucide="book-open-check" class="w-5 h-5 text-emerald-400"></i>
+                    <h2 class="font-bold text-lg text-white">¿Cómo funciona la Entrevista Clínica?</h2>
+                </div>
+                <button class="close-modal text-slate-400 hover:text-white p-1 rounded-lg">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <div class="py-4 space-y-4 text-sm text-slate-300 leading-relaxed">
+                <p>Eres el clínico a cargo de una consulta de primera vez. Tienes <strong class="text-emerald-400">45 minutos simulados</strong> y hasta <strong class="text-white">3 intentos de diagnóstico</strong> para identificar el trastorno del <strong class="text-white">DSM-5-TR</strong>.</p>
+
+                <div class="bg-slate-950/70 border border-slate-800/80 rounded-xl p-3.5 space-y-2">
+                    <p class="font-semibold text-white text-xs uppercase tracking-wider">Reglas de la Sesión:</p>
+                    <ul class="text-xs space-y-1.5 text-slate-400">
+                        <li><span class="text-emerald-400 font-bold">1. Triaje Inicial:</span> Comienzas solo con la edad, motivo de consulta y observación conductual breve.</li>
+                        <li><span class="text-emerald-400 font-bold">2. Indagación Activa (-5 min):</span> Explora las 4 áreas clínicas (<em>Anamnesis, Sintomatología, Examen Mental y Médico/Riesgo</em>). Cada pregunta consume 5 minutos.</li>
+                        <li><span class="text-emerald-400 font-bold">3. Hallazgos Clave:</span> Las preguntas que revelan criterios diagnósticos determinantes o descartes orgánicos se guardan automáticamente en tu <strong>Bitácora</strong>.</li>
+                        <li><span class="text-emerald-400 font-bold">4. Hipótesis Diagnóstica (-5 min si fallas):</span> Puedes diagnosticar en cualquier momento. Si fallas, recibes orientación diferencial y pierdes 5 minutos.</li>
+                    </ul>
+                </div>
+
+                <div class="space-y-2">
+                    <p class="font-semibold text-white text-xs uppercase tracking-wider">Código de colores de hipótesis:</p>
+                    <div class="flex items-start gap-2.5 bg-emerald-500/10 border border-emerald-500/30 p-2.5 rounded-xl text-xs">
+                        <span class="text-base leading-none">🟩</span>
+                        <div><strong class="text-emerald-400">Diagnóstico Exacto:</strong> Acertaste el trastorno del DSM-5-TR.</div>
+                    </div>
+                    <div class="flex items-start gap-2.5 bg-amber-500/10 border border-amber-500/30 p-2.5 rounded-xl text-xs">
+                        <span class="text-base leading-none">🟨</span>
+                        <div><strong class="text-amber-400">Mismo Espectro / Categoría:</strong> Pertenece al mismo capítulo del DSM-5-TR, pero es otro diagnóstico diferencial.</div>
+                    </div>
+                    <div class="flex items-start gap-2.5 bg-slate-800/70 border border-slate-700 p-2.5 rounded-xl text-xs">
+                        <span class="text-base leading-none">⬜</span>
+                        <div><strong class="text-slate-300">Categoría Distinta:</strong> Pertenece a otro grupo diagnóstico.</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pt-3 border-t border-slate-800 flex justify-end">
+                <button class="close-modal bg-emerald-600 hover:bg-emerald-500 text-white font-semibold px-5 py-2.5 rounded-xl text-sm transition-colors">
+                    Comenzar Consulta
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Estadísticas -->
+    <div id="modal-stats" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+                <div class="flex items-center gap-2">
+                    <i data-lucide="award" class="w-5 h-5 text-amber-400"></i>
+                    <h2 class="font-bold text-lg text-white">Desempeño Clínico</h2>
+                </div>
+                <button class="close-modal text-slate-400 hover:text-white p-1 rounded-lg">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <div class="grid grid-cols-4 gap-2.5 my-5 text-center">
+                <div class="bg-slate-950 border border-slate-800 p-3 rounded-xl">
+                    <div id="stat-played" class="text-xl sm:text-2xl font-extrabold text-white font-mono">0</div>
+                    <div class="text-[11px] text-slate-400 mt-0.5">Casos</div>
+                </div>
+                <div class="bg-slate-950 border border-slate-800 p-3 rounded-xl">
+                    <div id="stat-winrate" class="text-xl sm:text-2xl font-extrabold text-emerald-400 font-mono">0%</div>
+                    <div class="text-[11px] text-slate-400 mt-0.5">Acierto</div>
+                </div>
+                <div class="bg-slate-950 border border-slate-800 p-3 rounded-xl">
+                    <div id="stat-streak" class="text-xl sm:text-2xl font-extrabold text-amber-400 font-mono">0</div>
+                    <div class="text-[11px] text-slate-400 mt-0.5">Racha</div>
+                </div>
+                <div class="bg-slate-950 border border-slate-800 p-3 rounded-xl">
+                    <div id="stat-maxstreak" class="text-xl sm:text-2xl font-extrabold text-white font-mono">0</div>
+                    <div class="text-[11px] text-slate-400 mt-0.5">Máxima</div>
+                </div>
+            </div>
+
+            <div class="flex justify-between items-center pt-3 border-t border-slate-800">
+                <button id="btn-reset-progress" class="text-xs text-rose-400 hover:text-rose-300 underline">
+                    Reiniciar historial de casos
+                </button>
+                <button class="close-modal bg-slate-800 hover:bg-slate-700 text-white font-medium px-4 py-2 rounded-xl text-xs">
+                    Cerrar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * BASE DE DATOS DE TRASTORNOS DSM-5-TR (42 trastornos reales organizados por categorías oficiales)
+         */
+        const DSM_DISORDERS = [
+            // Trastornos del neurodesarrollo
+            { id: "tdah", name: "Trastorno por déficit de atención/hiperactividad (TDAH)", code: "F90.2", category: "Trastornos del neurodesarrollo" },
+            { id: "tea", name: "Trastorno del espectro autista", code: "F84.0", category: "Trastornos del neurodesarrollo" },
+            { id: "tourette", name: "Trastorno de la Tourette", code: "F95.2", category: "Trastornos del neurodesarrollo" },
+
+            // Espectro de la esquizofrenia y otros trastornos psicóticos
+            { id: "esquizofrenia", name: "Esquizofrenia", code: "F20.9", category: "Espectro de la esquizofrenia y otros trastornos psicóticos" },
+            { id: "esquizofreniforme", name: "Trastorno esquizofreniforme", code: "F20.81", category: "Espectro de la esquizofrenia y otros trastornos psicóticos" },
+            { id: "esquizoafectivo", name: "Trastorno esquizoafectivo", code: "F25.0", category: "Espectro de la esquizofrenia y otros trastornos psicóticos" },
+            { id: "psicotico_breve", name: "Trastorno psicótico breve", code: "F23", category: "Espectro de la esquizofrenia y otros trastornos psicóticos" },
+            { id: "delirante", name: "Trastorno delirante", code: "F22", category: "Espectro de la esquizofrenia y otros trastornos psicóticos" },
+
+            // Trastorno bipolar y trastornos relacionados
+            { id: "bipolar_1", name: "Trastorno bipolar I", code: "F31.1", category: "Trastorno bipolar y trastornos relacionados" },
+            { id: "bipolar_2", name: "Trastorno bipolar II", code: "F31.81", category: "Trastorno bipolar y trastornos relacionados" },
+            { id: "ciclotimico", name: "Trastorno ciclotímico", code: "F34.0", category: "Trastorno bipolar y trastornos relacionados" },
+
+            // Trastornos depresivos
+            { id: "depresivo_mayor", name: "Trastorno de depresión mayor", code: "F32.9", category: "Trastornos depresivos" },
+            { id: "distimia", name: "Trastorno depresivo persistente (Distimia)", code: "F34.1", category: "Trastornos depresivos" },
+            { id: "disforico_premenstrual", name: "Trastorno disfórico premenstrual", code: "F32.81", category: "Trastornos depresivos" },
+
+            // Trastornos de ansiedad
+            { id: "panico", name: "Trastorno de pánico", code: "F41.0", category: "Trastornos de ansiedad" },
+            { id: "agorafobia", name: "Agorafobia", code: "F40.00", category: "Trastornos de ansiedad" },
+            { id: "tag", name: "Trastorno de ansiedad generalizada (TAG)", code: "F41.1", category: "Trastornos de ansiedad" },
+            { id: "ansiedad_social", name: "Trastorno de ansiedad social (Fobia social)", code: "F40.10", category: "Trastornos de ansiedad" },
+            { id: "fobia_especifica", name: "Fobia específica", code: "F40.218", category: "Trastornos de ansiedad" },
+
+            // Trastorno obsesivo-compulsivo y trastornos relacionados
+            { id: "toc", name: "Trastorno obsesivo-compulsivo (TOC)", code: "F42.2", category: "Trastorno obsesivo-compulsivo y trastornos relacionados" },
+            { id: "dismorfico_corporal", name: "Trastorno dismórfico corporal", code: "F45.22", category: "Trastorno obsesivo-compulsivo y trastornos relacionados" },
+            { id: "acumulacion", name: "Trastorno de acumulación", code: "F42.3", category: "Trastorno obsesivo-compulsivo y trastornos relacionados" },
+            { id: "tricotilomania", name: "Tricotilomanía (trastorno de arrancarse el pelo)", code: "F63.3", category: "Trastorno obsesivo-compulsivo y trastornos relacionados" },
+
+            // Trastornos relacionados con traumas y factores de estrés
+            { id: "tept", name: "Trastorno de estrés postraumático (TEPT)", code: "F43.10", category: "Trastornos relacionados con traumas y factores de estrés" },
+            { id: "estres_agudo", name: "Trastorno de estrés agudo", code: "F43.0", category: "Trastornos relacionados con traumas y factores de estrés" },
+            { id: "adaptacion", name: "Trastorno de adaptación", code: "F43.20", category: "Trastornos relacionados con traumas y factores de estrés" },
+            { id: "duelo_prolongado", name: "Trastorno de duelo prolongado", code: "F43.8", category: "Trastornos relacionados con traumas y factores de estrés" },
+
+            // Trastornos disociativos
+            { id: "tid", name: "Trastorno de identidad disociativo", code: "F44.81", category: "Trastornos disociativos" },
+            { id: "despersonalizacion", name: "Trastorno de despersonalización/desrealización", code: "F48.1", category: "Trastornos disociativos" },
+
+            // Trastornos de síntomas somáticos y trastornos relacionados
+            { id: "sintomas_somaticos", name: "Trastorno de síntomas somáticos", code: "F45.1", category: "Trastornos de síntomas somáticos y trastornos relacionados" },
+            { id: "ansiedad_enfermedad", name: "Trastorno de ansiedad por enfermedad", code: "F45.21", category: "Trastornos de síntomas somáticos y trastornos relacionados" },
+            { id: "conversion", name: "Trastorno de conversión (trastorno de síntomas neurológicos funcionales)", code: "F44.4", category: "Trastornos de síntomas somáticos y trastornos relacionados" },
+
+            // Trastornos de la conducta alimentaria y de la ingesta de alimentos
+            { id: "anorexia", name: "Anorexia nerviosa", code: "F50.01", category: "Trastornos de la conducta alimentaria" },
+            { id: "bulimia", name: "Bulimia nerviosa", code: "F50.2", category: "Trastornos de la conducta alimentaria" },
+            { id: "atracones", name: "Trastorno de atracones", code: "F50.81", category: "Trastornos de la conducta alimentaria" },
+
+            // Trastornos de la personalidad
+            { id: "tlp", name: "Trastorno de la personalidad límite", code: "F60.3", category: "Trastornos de la personalidad" },
+            { id: "antisocial", name: "Trastorno de la personalidad antisocial", code: "F60.2", category: "Trastornos de la personalidad" },
+            { id: "narcisista", name: "Trastorno de la personalidad narcisista", code: "F60.81", category: "Trastornos de la personalidad" },
+            { id: "evitativa", name: "Trastorno de la personalidad evasiva", code: "F60.6", category: "Trastornos de la personalidad" },
+            { id: "obsesiva_personalidad", name: "Trastorno de la personalidad obsesivo-compulsiva", code: "F60.5", category: "Trastornos de la personalidad" },
+            { id: "esquizotipica", name: "Trastorno de la personalidad esquizotípica", code: "F21", category: "Trastornos de la personalidad" },
+            { id: "paranoide", name: "Trastorno de la personalidad paranoide", code: "F60.0", category: "Trastornos de la personalidad" }
+        ];
+
+        /**
+         * BANCO DE CASOS CLÍNICOS INTERACTIVOS POR PREGUNTAS (DSM-5-TR)
+         * Áreas: 'anamnesis' | 'sintomas' | 'examen_mental' | 'descartes'
+         */
+        const CLINICAL_CASES = [
+            {
+                id: 1,
+                label: "Caso #01 (Hoy)",
+                isDaily: true,
+                targetId: "bipolar_2",
+                triage: {
+                    demographics: "Mujer • 27 años • Diseñadora gráfica",
+                    chiefComplaint: "«Llevo tres semanas con una tristeza profunda, sin energía ni ganas de levantarme de la cama; siento que no sirvo para nada».",
+                    observation: "Acude acompañada por su hermana. Postura encorvada, contacto visual escaso, facies triste y movimientos pausados en sala de espera."
+                },
+                questions: [
+                    // ANAMNESIS
+                    {
+                        id: "c1_q1",
+                        area: "anamnesis",
+                        prompt: "¿Desde cuándo te sientes así y cómo ha afectado tu trabajo?",
+                        response: "«Este bajón empezó hace unas 3 semanas. He tenido que pedir días libres en la agencia porque me cuesta concentrarme y lloro por cualquier cosa».",
+                        isKey: false,
+                        tagType: null,
+                        summaryNote: null
+                    },
+                    {
+                        id: "c1_q2",
+                        area: "anamnesis",
+                        prompt: "¿Has tenido episodios de tristeza similares en años anteriores?",
+                        response: "«Sí, al menos dos veces en los últimos 3 años estuve igual de apagada durante un mes o más, pero luego se me pasaba solo».",
+                        isKey: true,
+                        tagType: "Criterio Clave",
+                        summaryNote: "Antecedente de al menos 2 episodios depresivos mayores previos en los últimos 3 años."
+                    },
+                    {
+                        id: "c1_q3",
+                        area: "anamnesis",
+                        prompt: "¿Hubo algún evento estresante o pérdida reciente antes de este episodio?",
+                        response: "«Nada fuera de lo normal, mi relación de pareja iba bien y en el trabajo todo estaba tranquilo antes de que me cayera el ánimo».",
+                        isKey: false,
+                        tagType: null,
+                        summaryNote: null
+                    },
+                    // SINTOMATOLOGÍA
+                    {
+                        id: "c1_q4",
+                        area: "sintomas",
+                        prompt: "¿Cómo han estado tu sueño, energía y ritmo de actividad en los últimos meses?",
+                        response: "«Ahora duermo 11 horas y sigo agotada. Pero hace dos meses fue lo opuesto: durante 5 días seguidos dormía solo 3 horas, me sentía imparable, hablaba rapidísimo y acepté 4 proyectos a la vez».",
+                        isKey: true,
+                        tagType: "Criterio Clave",
+                        summaryNote: "Episodio previo de 5 días consecutivos con disminución de necesidad de sueño (3h), verborrea y aumento de actividad dirigida a objetivos."
+                    },
+                    {
+                        id: "c1_q5",
+                        area: "sintomas",
+                        prompt: "Durante esos días de tanta energía, ¿tomaste decisiones impulsivas o gastaste dinero?",
+                        response: "«Sí, me compré una cámara profesional carísima con mis ahorros y trabajaba hasta las 4 de la madrugada sin sentir cansancio, aunque seguí cumpliendo en mi oficina».",
+                        isKey: true,
+                        tagType: "Criterio Clave",
+                        summaryNote: "Durante la elevación anímica hubo gastos impulsivos, pero mantuvo funcionalidad laboral sin requerir hospitalización (hipomanía, no manía)."
+                    },
+                    {
+                        id: "c1_q6",
+                        area: "sintomas",
+                        prompt: "¿Experimentas crisis de pánico o miedos intensos en lugares públicos?",
+                        response: "«No, no tengo ataques de pánico ni miedo a salir; simplemente no tengo fuerzas ni motivación para hacer cosas».",
+                        isKey: false,
+                        tagType: null,
+                        summaryNote: null
+                    },
+                    // EXAMEN MENTAL
+                    {
+                        id: "c1_q7",
+                        area: "examen_mental",
+                        prompt: "[Evaluar afecto, discurso y curso del pensamiento]",
+                        response: "Hallazgo clínico: Afecto hipotímico congruente con el estado de ánimo. Discurso coherente, lógico, con latencia de respuesta levemente aumentada. Sin fuga de ideas actual.",
+                        isKey: false,
+                        tagType: null,
+                        summaryNote: null
+                    },
+                    {
+                        id: "c1_q8",
+                        area: "examen_mental",
+                        prompt: "[Explorar juicio de realidad y presencia de síntomas psicóticos]",
+                        response: "Hallazgo clínico: Juicio de realidad conservado. Niega alucinaciones auditivas/visuales o ideas delirantes tanto en el episodio depresivo actual como durante los días de euforia previos.",
+                        isKey: true,
+                        tagType: "Descarte Clave",
+                        summaryNote: "Ausencia de síntomas psicóticos durante la fase de elevación del ánimo (descarta episodio maníaco / Bipolar I)."
+                    },
+                    // DESCARTES / MÉDICO
+                    {
+                        id: "c1_q9",
+                        area: "descartes",
+                        prompt: "¿Consumes alcohol, estimulantes o algún medicamento actualmente?",
+                        response: "«No consumo drogas ni estimulantes, y apenas tomo una copa de vino en cumpleaños. Tampoco tomo antidepresivos».",
+                        isKey: true,
+                        tagType: "Descarte Clave",
+                        summaryNote: "Se descarta episodio inducido por sustancias o antidepresivos."
+                    },
+                    {
+                        id: "c1_q10",
+                        area: "descartes",
+                        prompt: "[Solicitar analítica sanguínea y perfil tiroideo reciente]",
+                        response: "Resultado de laboratorio: Hemograma, bioquímica básica y perfil tiroideo (TSH y T4 libre) estrictamente dentro de rangos normales.",
+                        isKey: false,
+                        tagType: null,
+                        summaryNote: null
+                    },
+                    {
+                        id: "c1_q11",
+                        area: "descartes",
+                        prompt: "[Evaluar riesgo suicida e ideación autolítica]",
+                        response: "«A veces pienso que sería un alivio quedarme dormida y no despertar, pero nunca me haría daño ni tengo ningún plan; quiero mejorar».",
+                        isKey: false,
+                        tagType: null,
+                        summaryNote: null
+                    }
+                ],
+                autopsy: {
+                    criteriaMet: [
+                        "Presencia de al menos un episodio hipomaníaco pasado de ≥ 4 días consecutivos (duró 5 días) con disminución de la necesidad de sueño, verborrea y aumento de actividad dirigida a objetivos.",
+                        "Presencia de episodios depresivos mayores recurrentes (actual de 3 semanas y dos previos en 3 años).",
+                        "Nunca ha existido un episodio maníaco completo: no hubo psicosis, hospitalización ni deterioro grave durante la fase expansiva."
+                    ],
+                    differentials: [
+                        {
+                            disorder: "Trastorno bipolar I",
+                            reason: "Exige al menos un episodio maníaco completo (≥ 7 días, hospitalización, psicosis o deterioro laboral/social grave). En esta paciente el episodio duró 5 días sin psicosis ni deterioro grave (hipomanía)."
+                        },
+                        {
+                            disorder: "Trastorno de depresión mayor",
+                            reason: "Aunque consulta por un episodio depresivo mayor, la exploración longitudinal revela un episodio hipomaníaco claro hace 2 meses, lo cual descarta la depresión unipolar."
+                        },
+                        {
+                            disorder: "Trastorno de la personalidad límite",
+                            reason: "La inestabilidad afectiva en el TLP oscila en horas frente a estresores interpersonales, mientras que aquí hubo un cambio episódico autónomo de 5 días con disminución fisiológica de la necesidad de sueño."
+                        }
+                    ]
+                }
+            },
+            {
+                id: 2,
+                label: "Caso #02 (Archivo)",
+                isDaily: false,
+                targetId: "toc",
+                triage: {
+                    demographics: "Varón • 30 años • Arquitecto",
+                    chiefComplaint: "«No puedo concentrarme en los planos; paso horas revisando todo y siento una angustia constante de que ocurra una desgracia por mi culpa».",
+                    observation: "Paciente vigilante, tenso, consulta repetidamente la pantalla de su teléfono móvil antes de entrar al consultorio."
+                },
+                questions: [
+                    {
+                        id: "c2_q1",
+                        area: "anamnesis",
+                        prompt: "¿Desde cuándo ocurre esta necesidad de revisar todo y cuánto tiempo te ocupa?",
+                        response: "«Empezó hace unos 3 años, pero en los últimos 8 meses me consume más de 3 horas al día. Ayer llegué tarde a entregar un proyecto porque no podía salir de casa».",
+                        isKey: true,
+                        tagType: "Criterio Clave",
+                        summaryNote: "Síntomas presentes desde hace años, consumiendo >3 horas diarias con deterioro laboral significativo."
+                    },
+                    {
+                        id: "c2_q2",
+                        area: "anamnesis",
+                        prompt: "¿Siempre has sido una persona perfeccionista o rígida con el orden desde joven?",
+                        response: "«En realidad de adolescente era bastante relajado y desordenado. Esto no es que me guste el orden, es que me atormenta una idea horrible si no hago ciertas cosas».",
+                        isKey: true,
+                        tagType: "Descarte Clave",
+                        summaryNote: "Síntomas egodistónicos (no es un rasgo de personalidad perfeccionista egosintónico como en el TPOC)."
+                    },
+                    {
+                        id: "c2_q3",
+                        area: "sintomas",
+                        prompt: "¿Qué pensamientos exactos te vienen a la mente cuando sientes esa angustia?",
+                        response: "«Me aparecen imágenes intrusivas de que dejé una llave de gas abierta o un cable pelado y que mi edificio va a explotar matando a los vecinos. Sé que es absurdo, pero la imagen no se va».",
+                        isKey: true,
+                        tagType: "Criterio Clave",
+                        summaryNote: "Obsesiones recurrentes e intrusivas de daño/catástrofe reconocidas como excesivas pero incontrolables."
+                    },
+                    {
+                        id: "c2_q4",
+                        area: "sintomas",
+                        prompt: "¿Qué haces para calmar esa angustia o evitar que ocurra esa desgracia?",
+                        response: "«Toco los interruptores 8 veces seguidas y, si estoy fuera, repito mentalmente una oración exacta en múltiplos de 4 hasta que siento que neutralicé el peligro».",
+                        isKey: true,
+                        tagType: "Criterio Clave",
+                        summaryNote: "Compulsiones motoras (tocar interruptores) y mentales (rezar en múltiplos) rígidas para neutralizar la ansiedad obsesiva."
+                    },
+                    {
+                        id: "c2_q5",
+                        area: "sintomas",
+                        prompt: "¿Te preocupas también por temas cotidianos como deudas, salud o el futuro?",
+                        response: "«No más que cualquier persona normal; mi problema son específicamente estas ideas catastróficas intrusivas y los rituales que tengo que hacer».",
+                        isKey: false,
+                        tagType: null,
+                        summaryNote: null
+                    },
+                    {
+                        id: "c2_q6",
+                        area: "examen_mental",
+                        prompt: "[Evaluar introspección (insight) y juicio de realidad]",
+                        response: "Hallazgo clínico: Introspección buena/aceptable. El paciente reconoce que sus creencias obsesivas probablemente no son ciertas, pero experimenta ansiedad intensa si interrumpe sus rituales.",
+                        isKey: false,
+                        tagType: null,
+                        summaryNote: null
+                    },
+                    {
+                        id: "c2_q7",
+                        area: "descartes",
+                        prompt: "¿Tienes antecedentes de tics motores/vocales o consumo de sustancias?",
+                        response: "«Nunca he tenido tics ni tomo drogas. Solo tomo café por las mañanas».",
+                        isKey: true,
+                        tagType: "Descarte Clave",
+                        summaryNote: "Sin antecedentes de tics ni efectos fisiológicos de sustancias."
+                    },
+                    {
+                        id: "c2_q8",
+                        area: "descartes",
+                        prompt: "¿Has vivido algún accidente o evento traumático relacionado con incendios o explosiones?",
+                        response: "«Jamás he vivido un incendio ni ningún accidente grave en mi vida».",
+                        isKey: false,
+                        tagType: null,
+                        summaryNote: null
+                    }
+                ],
+                autopsy: {
+                    criteriaMet: [
+                        "Presencia de obsesiones (pensamientos/imágenes intrusivas recurrentes de causar daño por descuido que causan ansiedad marcada).",
+                        "Presencia de compulsiones físicas (comprobación de interruptores) y mentales (rezar en múltiplos de 4) ejecutadas según reglas rígidas para neutralizar la angustia.",
+                        "Las obsesiones y compulsiones requieren >1 hora diaria (más de 3 horas) y deterioran el desempeño laboral."
+                    ],
+                    differentials: [
+                        {
+                            disorder: "Trastorno de ansiedad generalizada (TAG)",
+                            reason: "En el TAG las preocupaciones giran en torno a problemas reales de la vida diaria (finanzas, trabajo), sin imágenes intrusivas bizarras ni rituales compulsivos neutralizadores."
+                        },
+                        {
+                            disorder: "Trastorno de la personalidad obsesivo-compulsiva",
+                            reason: "El TPOC implica perfeccionismo y rigidez egosintónica desde el inicio de la adultez, pero carece de verdaderas obsesiones intrusivas y compulsiones."
+                        },
+                        {
+                            disorder: "Trastorno delirante",
+                            reason: "El paciente conserva el insight y reconoce que sus pensamientos son excesivos, mientras que en el trastorno delirante existe convicción fija sin crítica."
+                        }
+                    ]
+                }
+            },
+            {
+                id: 3,
+                label: "Caso #03 (Archivo)",
+                isDaily: false,
+                targetId: "esquizofreniforme",
+                triage: {
+                    demographics: "Varón • 21 años • Estudiante de Ingeniería",
+                    chiefComplaint: "Traído por sus padres: «Dice que han intervenido el wifi de casa para leer su mente y dejó la universidad hace dos meses».",
+                    observation: "Mirada suspicaz hacia las esquinas del techo, afecto plano y postura rígida."
+                },
+                questions: [
+                    {
+                        id: "c3_q1",
+                        area: "anamnesis",
+                        prompt: "¿Cuándo comenzaron exactamente estos cambios y cómo era antes?",
+                        response: "Madre: «Era un chico sociable y excelente alumno hasta hace exactamente 3 meses y medio, cuando empezó a aislarse y a tapar las ventanas con papel aluminio».",
+                        isKey: true,
+                        tagType: "Criterio Clave",
+                        summaryNote: "Duración total de la alteración continua de 3.5 meses (≥ 1 mes pero < 6 meses)."
+                    },
+                    {
+                        id: "c3_q2",
+                        area: "anamnesis",
+                        prompt: "¿Ha tenido episodios depresivos o de euforia extrema antes o durante estos 3 meses?",
+                        response: "Madre: «No, no ha estado ni eufórico ni con depresión previa; simplemente empezó con estas ideas extrañas y se fue apagando emocionalmente».",
+                        isKey: true,
+                        tagType: "Descarte Clave",
+                        summaryNote: "Ausencia de episodios afectivos mayores concomitantes (descarta trastorno esquizoafectivo)."
+                    },
+                    {
+                        id: "c3_q3",
+                        area: "sintomas",
+                        prompt: "¿Escuchas voces o sonidos que otras personas no parecen oír?",
+                        response: "Paciente: «Sí, desde hace dos meses escucho dos voces masculinas dentro de mi cabeza que comentan todo lo que hago y me dicen que me están vigilando».",
+                        isKey: true,
+                        tagType: "Criterio Clave",
+                        summaryNote: "Alucinaciones auditivas prominentes (voces comentadoras en tercera persona) e ideas delirantes de persecución."
+                    },
+                    {
+                        id: "c3_q4",
+                        area: "sintomas",
+                        prompt: "¿Sientes que alguien controla tus pensamientos o los transmite a otros?",
+                        response: "Paciente: «Las antenas del vecindario extraen mis ideas antes de que las escriba; por eso ya no puedo estudiar».",
+                        isKey: false,
+                        tagType: null,
+                        summaryNote: null
+                    },
+                    {
+                        id: "c3_q5",
+                        area: "examen_mental",
+                        prompt: "[Evaluar curso del lenguaje, afecto y conducta motora]",
+                        response: "Hallazgo clínico: Discurso tangencial con descarrilamiento ocasional al explicar sus teorías. Expresión facial inmutable (afecto aplanado) y abulia marcada.",
+                        isKey: true,
+                        tagType: "Criterio Clave",
+                        summaryNote: "Presencia de discurso desorganizado y síntomas negativos (afecto aplanado, abulia)."
+                    },
+                    {
+                        id: "c3_q6",
+                        area: "descartes",
+                        prompt: "[Revisar examen toxicológico en orina y neuroimagen]",
+                        response: "Resultados: Panel toxicológico en orina negativo para cannabis, cocaína, anfetaminas y alucinógenos. RM cerebral y analítica sin alteraciones.",
+                        isKey: true,
+                        tagType: "Descarte Clave",
+                        summaryNote: "Descartada psicosis inducida por sustancias o patología neurológica orgánica."
+                    },
+                    {
+                        id: "c3_q7",
+                        area: "descartes",
+                        prompt: "¿Existen antecedentes de trastornos psicóticos en la familia?",
+                        response: "Padre: «Un tío paterno fue diagnosticado con esquizofrenia en su juventud».",
+                        isKey: false,
+                        tagType: null,
+                        summaryNote: null
+                    }
+                ],
+                autopsy: {
+                    criteriaMet: [
+                        "Presencia de ≥ 2 síntomas del Criterio A (delirios de persecución/control, alucinaciones auditivas, discurso desorganizado y síntomas negativos) durante al menos 1 mes.",
+                        "La duración total del episodio (incluyendo fases prodrómica, activa y residual) es de 3.5 meses: al menos 1 mes pero inferior a 6 meses.",
+                        "Descartados trastorno esquizoafectivo, trastornos del estado de ánimo con psicosis y consumo de sustancias."
+                    ],
+                    differentials: [
+                        {
+                            disorder: "Esquizofrenia",
+                            reason: "El criterio temporal del DSM-5-TR exige signos continuos de la alteración durante al menos 6 meses. Al llevar 3.5 meses, el diagnóstico exacto es trastorno esquizofreniforme."
+                        },
+                        {
+                            disorder: "Trastorno psicótico breve",
+                            reason: "Dura al menos 1 día pero menos de 1 mes, con retorno completo al funcionamiento premórbido."
+                        },
+                        {
+                            disorder: "Trastorno esquizoafectivo",
+                            reason: "Requiere un episodio mayor del estado de ánimo (depresivo o maníaco) concurrente con la mayor parte de la enfermedad, ausente en este paciente."
+                        }
+                    ]
+                }
+            },
+            {
+                id: 4,
+                label: "Caso #04 (Archivo)",
+                isDaily: false,
+                targetId: "tept",
+                triage: {
+                    demographics: "Varón • 34 años • Paramédico de urgencias",
+                    chiefComplaint: "«No logro dormir más de dos horas seguidas, salto ante cualquier ruido y siento que me he desconectado por completo de mi familia».",
+                    observation: "Se sienta de espaldas a la pared mirando hacia la puerta del consultorio; hiperalerta ante los pasos del pasillo."
+                },
+                questions: [
+                    {
+                        id: "c4_q1",
+                        area: "anamnesis",
+                        prompt: "¿Desde cuándo presentas estos síntomas y ocurrió algún suceso crítico antes?",
+                        response: "«Todo empezó hace 4 meses, tras atender el derrumbe de un puente donde fallecieron varios civiles y un compañero mío quedó atrapado frente a mí».",
+                        isKey: true,
+                        tagType: "Criterio Clave",
+                        summaryNote: "Exposición directa a muerte/lesiones graves hace 4 meses (duración > 1 mes)."
+                    },
+                    {
+                        id: "c4_q2",
+                        area: "anamnesis",
+                        prompt: "¿Cómo ha cambiado tu rutina diaria y tu trabajo desde aquel rescate?",
+                        response: "«Pedí traslado administrativo porque soy incapaz de subir a una ambulancia. Además doy rodeos de 40 minutos en auto para no pasar cerca de ningún puente».",
+                        isKey: true,
+                        tagType: "Criterio Clave",
+                        summaryNote: "Evitación persistente de estímulos externos asociados al trauma (ambulancias, puentes) con deterioro laboral."
+                    },
+                    {
+                        id: "c4_q3",
+                        area: "sintomas",
+                        prompt: "¿Tienes pesadillas o momentos en los que sientes que vuelves a vivir la escena?",
+                        response: "«Casi todas las noches tengo pesadillas con los gritos del derrumbe, y de día el sonido de una sirena me paraliza como si estuviera allí otra vez».",
+                        isKey: true,
+                        tagType: "Criterio Clave",
+                        summaryNote: "Síntomas de intrusión: pesadillas traumáticas recurrentes y reacciones disociativas/flashbacks."
+                    },
+                    {
+                        id: "c4_q4",
+                        area: "sintomas",
+                        prompt: "¿Cómo ha cambiado tu forma de verte a ti mismo o tu estado de ánimo hacia tus seres queridos?",
+                        response: "«Siento una culpa constante pensando que debí hacer más, no logro sentir alegría ni cariño hacia mi esposa, y creo que el mundo es un lugar totalmente peligroso».",
+                        isKey: true,
+                        tagType: "Criterio Clave",
+                        summaryNote: "Alteraciones negativas cognitivas y del estado de ánimo (culpa distorsionada, anhedonia afectiva, creencias negativas)."
+                    },
+                    {
+                        id: "c4_q5",
+                        area: "examen_mental",
+                        prompt: "[Observar reactividad autonómica, irritabilidad y concentración]",
+                        response: "Hallazgo clínico: Respuesta de sobresalto exagerada cuando cae un bolígrafo al suelo. Refiere accesos de irritabilidad explosiva en casa y dificultad marcada para concentrarse.",
+                        isKey: false,
+                        tagType: null,
+                        summaryNote: null
+                    },
+                    {
+                        id: "c4_q6",
+                        area: "descartes",
+                        prompt: "¿Sufriste algún golpe en la cabeza durante el rescate o consumes alcohol para dormir?",
+                        response: "«No sufrí ningún traumatismo craneal ni pérdida de conciencia. Evito el alcohol porque sé que empeora las cosas».",
+                        isKey: true,
+                        tagType: "Descarte Clave",
+                        summaryNote: "Descartado traumatismo craneoencefálico (TCE) y trastorno por consumo de sustancias."
+                    }
+                ],
+                autopsy: {
+                    criteriaMet: [
+                        "Exposición directa a la muerte y lesiones graves durante el ejercicio profesional.",
+                        "Presencia de los 4 clústeres sintomáticos: intrusión (pesadillas, flashbacks), evitación (puentes, ambulancias), alteraciones cognitivas/estado de ánimo y alerta/reactividad (sobresalto, insomnio, irritabilidad).",
+                        "Duración superior a 1 mes (4 meses desde el evento) con deterioro funcional significativo."
+                    ],
+                    differentials: [
+                        {
+                            disorder: "Trastorno de estrés agudo",
+                            reason: "Comparte los síntomas postraumáticos, pero se diagnostica únicamente entre los 3 días y 1 mes posterior al trauma. Al llevar 4 meses, corresponde a TEPT."
+                        },
+                        {
+                            disorder: "Trastorno de adaptación",
+                            reason: "Se aplica cuando el estresor no cumple el criterio de trauma grave o cuando no se alcanzan todos los criterios sintomáticos del TEPT."
+                        },
+                        {
+                            disorder: "Trastorno de depresión mayor",
+                            reason: "La depresión mayor no explica las reviviscencias intrusivas, los flashbacks ante sirenas ni la respuesta de sobresalto exagerada."
+                        }
+                    ]
+                }
+            },
+            {
+                id: 5,
+                label: "Caso #05 (Archivo)",
+                isDaily: false,
+                targetId: "tlp",
+                triage: {
+                    demographics: "Mujer • 23 años • Estudiante de Comunicación",
+                    chiefComplaint: "«Siento un vacío insoportable por dentro; ayer discutí con mi novio porque tardó en contestar y me hice cortes superficiales en el brazo».",
+                    observation: "Vendaje reciente en antebrazo izquierdo; actitud intensa, alternando entre búsqueda de validación y frustración rápida."
+                },
+                questions: [
+                    {
+                        id: "c5_q1",
+                        area: "anamnesis",
+                        prompt: "¿Desde qué etapa de tu vida notas esta intensidad emocional y problemas en tus relaciones?",
+                        response: "«Desde los 17 o 18 años. Siempre me pasa lo mismo: conozco a alguien y siento que es perfecto, pero al menor fallo siento que me va a abandonar y lo odio».",
+                        isKey: true,
+                        tagType: "Criterio Clave",
+                        summaryNote: "Patrón estable desde el inicio de la adultez de idealización/devaluación y esfuerzos frenéticos por evitar el abandono."
+                    },
+                    {
+                        id: "c5_q2",
+                        area: "sintomas",
+                        prompt: "¿Cuánto duran tus cambios bruscos de estado de ánimo y qué los suele desencadenar?",
+                        response: "«Puedo pasar de estar eufórica a sentir una rabia o desesperación extrema en cuestión de dos o tres horas, casi siempre cuando siento que alguien me rechaza o me ignora».",
+                        isKey: true,
+                        tagType: "Criterio Clave",
+                        summaryNote: "Inestabilidad afectiva por notable reactividad del estado de ánimo (episodios de horas, no días autónomos)."
+                    },
+                    {
+                        id: "c5_q3",
+                        area: "sintomas",
+                        prompt: "¿Cómo describirías la imagen que tienes de ti misma y tus metas a futuro?",
+                        response: "«No sé quién soy realmente; cambio de carrera, de estilo y de amigos cada pocos meses según con quién esté, y casi siempre siento un vacío crónico».",
+                        isKey: true,
+                        tagType: "Criterio Clave",
+                        summaryNote: "Alteración marcada y persistente de la identidad y sensación crónica de vacío."
+                    },
+                    {
+                        id: "c5_q4",
+                        area: "sintomas",
+                        prompt: "¿Has tenido episodios de varios días sin dormir donde te sientas con energía sobrehumana sin motivo?",
+                        response: "«No, si me desvelo es porque estoy llorando o peleando por teléfono, nunca porque me sobre energía durante días seguidos».",
+                        isKey: true,
+                        tagType: "Descarte Clave",
+                        summaryNote: "Sin episodios hipomaníacos/maníacos sostenidos ni disminución de necesidad de sueño (diferencia clave frente a Bipolar II)."
+                    },
+                    {
+                        id: "c5_q5",
+                        area: "examen_mental",
+                        prompt: "[Explorar síntomas disociativos o ideación paranoide bajo estrés]",
+                        response: "«Cuando siento que me van a dejar, a veces me siento desconectada de mi cuerpo como en una película, o pienso que todos conspiran contra mí, pero se me pasa al día siguiente».",
+                        isKey: false,
+                        tagType: null,
+                        summaryNote: null
+                    },
+                    {
+                        id: "c5_q6",
+                        area: "descartes",
+                        prompt: "[Evaluar conductas autolesivas recurrentes e impulsividad]",
+                        response: "Hallazgo clínico: Refiere 4 episodios de autolesiones superficiales en los últimos dos años para aliviar tensión emocional, además de gastos impulsivos y conducción temeraria ocasional.",
+                        isKey: true,
+                        tagType: "Criterio Clave",
+                        summaryNote: "Conductas autolesivas recurrentes e impulsividad en al menos dos áreas potencialmente dañinas."
+                    }
+                ],
+                autopsy: {
+                    criteriaMet: [
+                        "Patrón dominante de inestabilidad de las relaciones interpersonales, de la autoimagen y de los afectos, e impulsividad intensa que comienza en las primeras etapas de la edad adulta.",
+                        "Cumple 7 criterios del DSM-5-TR: esfuerzos para evitar el abandono, relaciones inestables (idealización/devaluación), alteración de identidad, impulsividad (gastos/conducción), autolesiones recurrentes, inestabilidad afectiva reactiva en horas y sensación crónica de vacío."
+                    ],
+                    differentials: [
+                        {
+                            disorder: "Trastorno bipolar II",
+                            reason: "En el Bipolar II los cambios de ánimo son episódicos (≥ 4 días en hipomanía, ≥ 2 semanas en depresión) con alteración fisiológica del sueño/energía. En el TLP oscilan en horas ante disparadores interpersonales."
+                        },
+                        {
+                            disorder: "Trastorno de depresión mayor",
+                            reason: "La depresión mayor no explica la alternancia crónica de idealización/devaluación, la difusión de identidad ni los esfuerzos frenéticos frente al abandono."
+                        },
+                        {
+                            disorder: "Trastorno de la personalidad histriónica",
+                            reason: "Aunque ambos buscan atención, el trastorno histriónico carece de las conductas autolesivas, la ira destructiva y los sentimientos crónicos de vacío profundos del TLP."
+                        }
+                    ]
+                }
+            }
+        ];
+
+        /**
+         * ESTADO DE LA APLICACIÓN Y GESTIÓN DE LOCALSTORAGE
+         */
+        const STORAGE_KEY = 'clinidle_interview_v2';
+        const MAX_SESSION_MINUTES = 45;
+        const MINUTES_PER_ACTION = 5;
+        const MAX_DIAGNOSIS_ATTEMPTS = 3;
+
+        let appState = {
+            currentCaseId: 1,
+            stats: {
+                played: 0,
+                won: 0,
+                currentStreak: 0,
+                maxStreak: 0
+            },
+            // Mapa por ID de caso:
+            // { askedQuestionIds: [], failedGuesses: [], timeLeft: 45, status: 'playing'|'won'|'lost' }
+            casesProgress: {}
+        };
+
+        let selectedDisorder = null;
+        let activeTabArea = 'anamnesis';
+        let questionFilterText = '';
+
+        function loadState() {
+            try {
+                const saved = localStorage.getItem(STORAGE_KEY);
+                if (saved) {
+                    const parsed = JSON.parse(saved);
+                    appState = {
+                        ...appState,
+                        ...parsed,
+                        stats: { ...appState.stats, ...(parsed.stats || {}) },
+                        casesProgress: parsed.casesProgress || {}
+                    };
+                }
+            } catch (e) {
+                console.warn("No se pudo leer localStorage:", e);
+            }
+
+            CLINICAL_CASES.forEach(c => {
+                if (!appState.casesProgress[c.id]) {
+                    appState.casesProgress[c.id] = {
+                        askedQuestionIds: [],
+                        failedGuesses: [],
+                        timeLeft: MAX_SESSION_MINUTES,
+                        status: 'playing'
+                    };
+                }
+            });
+        }
+
+        function saveState() {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+            } catch (e) {
+                console.warn("No se pudo guardar en localStorage:", e);
+            }
+        }
+
+        /**
+         * UTILIDADES UI
+         */
+        let toastTimeout = null;
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const content = document.getElementById('toast-content');
+            const msgEl = document.getElementById('toast-message');
+
+            msgEl.textContent = message;
+            if (type === 'error') {
+                content.className = "bg-rose-950 border border-rose-700 text-rose-100 px-4 py-3 rounded-xl shadow-2xl flex items-center gap-2.5 text-sm font-medium";
+            } else if (type === 'key') {
+                content.className = "bg-amber-950 border border-amber-500/60 text-amber-100 px-4 py-3 rounded-xl shadow-2xl flex items-center gap-2.5 text-sm font-medium";
+            } else {
+                content.className = "bg-slate-800 border border-emerald-500/40 text-slate-100 px-4 py-3 rounded-xl shadow-2xl flex items-center gap-2.5 text-sm font-medium";
+            }
+
+            container.classList.remove('opacity-0', 'translate-y-4');
+            container.classList.add('opacity-100', 'translate-y-0');
+
+            clearTimeout(toastTimeout);
+            toastTimeout = setTimeout(() => {
+                container.classList.remove('opacity-100', 'translate-y-0');
+                container.classList.add('opacity-0', 'translate-y-4');
+            }, 3200);
+        }
+
+        function normalizeText(str) {
+            return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+        }
+
+        function getCurrentCase() {
+            return CLINICAL_CASES.find(c => c.id === appState.currentCaseId) || CLINICAL_CASES[0];
+        }
+
+        function getCurrentProgress() {
+            return appState.casesProgress[appState.currentCaseId];
+        }
+
+        function getDisorderById(id) {
+            return DSM_DISORDERS.find(d => d.id === id);
+        }
+
+        /**
+         * RENDERIZADO DE COMPONENTES DE LA INTERFAZ
+         */
+        function renderCaseSelector() {
+            const selector = document.getElementById('case-selector');
+            selector.innerHTML = '';
+
+            CLINICAL_CASES.forEach(c => {
+                const prog = appState.casesProgress[c.id];
+                let statusIcon = '';
+                if (prog.status === 'won') statusIcon = '✅ ';
+                else if (prog.status === 'lost') statusIcon = '❌ ';
+
+                const opt = document.createElement('option');
+                opt.value = c.id;
+                opt.textContent = `${statusIcon}${c.label}`;
+                if (c.id === appState.currentCaseId) opt.selected = true;
+                selector.appendChild(opt);
+            });
+        }
+
+        function renderHeaderAndTriage() {
+            const currentCase = getCurrentCase();
+            const progress = getCurrentProgress();
+
+            document.getElementById('streak-counter').textContent = appState.stats.currentStreak;
+            document.getElementById('case-badge').textContent = `#0${currentCase.id}`;
+            document.getElementById('case-title').textContent = `Expediente Clínico #0${currentCase.id}`;
+
+            const dailyTag = document.getElementById('daily-tag');
+            if (currentCase.isDaily) {
+                dailyTag.textContent = "Caso del Día";
+                dailyTag.className = "text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30";
+            } else {
+                dailyTag.textContent = "Archivo Clínico";
+                dailyTag.className = "text-[11px] font-semibold px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700";
+            }
+
+            // Tiempo restante de consulta
+            const timeEl = document.getElementById('session-time-text');
+            const clockIcon = document.getElementById('clock-icon');
+            timeEl.textContent = `${progress.timeLeft} min`;
+            if (progress.timeLeft <= 10) {
+                timeEl.className = "text-sm font-mono font-bold text-rose-400 mt-0.5 block";
+                clockIcon.className = "w-4 h-4 text-rose-400";
+            } else if (progress.timeLeft <= 20) {
+                timeEl.className = "text-sm font-mono font-bold text-amber-400 mt-0.5 block";
+                clockIcon.className = "w-4 h-4 text-amber-400";
+            } else {
+                timeEl.className = "text-sm font-mono font-bold text-emerald-400 mt-0.5 block";
+                clockIcon.className = "w-4 h-4 text-emerald-400";
+            }
+
+            // 3 Puntos de Hipótesis Diagnóstica
+            const dotsContainer = document.getElementById('attempts-dots');
+            dotsContainer.innerHTML = '';
+            const targetDisorder = getDisorderById(currentCase.targetId);
+
+            for (let i = 0; i < MAX_DIAGNOSIS_ATTEMPTS; i++) {
+                const dot = document.createElement('div');
+                const failedId = progress.failedGuesses[i];
+                if (failedId) {
+                    const guessed = getDisorderById(failedId);
+                    if (guessed && guessed.category === targetDisorder.category) {
+                        dot.className = "w-3.5 h-3.5 rounded-sm bg-amber-400";
+                        dot.title = "Misma categoría diagnóstica";
+                    } else {
+                        dot.className = "w-3.5 h-3.5 rounded-sm bg-rose-500";
+                        dot.title = "Categoría distinta";
+                    }
+                } else if (progress.status === 'won' && i === progress.failedGuesses.length) {
+                    dot.className = "w-3.5 h-3.5 rounded-sm bg-emerald-500 shadow-sm shadow-emerald-500/50";
+                    dot.title = "Diagnóstico acertado";
+                } else {
+                    dot.className = "w-3.5 h-3.5 rounded-sm bg-slate-800 border border-slate-700";
+                }
+                dotsContainer.appendChild(dot);
+            }
+
+            // Ficha de Triaje
+            document.getElementById('triage-demographics').textContent = currentCase.triage.demographics;
+            document.getElementById('triage-chief-complaint').textContent = currentCase.triage.chiefComplaint;
+            document.getElementById('triage-observation').textContent = currentCase.triage.observation;
+        }
+
+        function renderNotesLog() {
+            const currentCase = getCurrentCase();
+            const progress = getCurrentProgress();
+            const list = document.getElementById('notes-log-list');
+            const counter = document.getElementById('key-findings-counter');
+
+            const totalKeyQuestions = currentCase.questions.filter(q => q.isKey).length;
+            const discoveredKeyQuestions = currentCase.questions.filter(
+                q => q.isKey && progress.askedQuestionIds.includes(q.id)
+            );
+
+            counter.textContent = `${discoveredKeyQuestions.length}/${totalKeyQuestions} hallazgos clave`;
+
+            if (discoveredKeyQuestions.length === 0) {
+                list.innerHTML = `<p class="text-xs text-slate-500 italic py-1">Aún no has recopilado hallazgos determinantes. Explora las áreas clínicas abajo para descubrir criterios diagnósticos y descartes.</p>`;
+                return;
+            }
+
+            list.innerHTML = '';
+            discoveredKeyQuestions.forEach(q => {
+                const badgeClass = q.tagType === 'Descarte Clave'
+                    ? 'bg-sky-500/15 text-sky-300 border-sky-500/30'
+                    : 'bg-amber-500/15 text-amber-300 border-amber-500/30';
+
+                const item = document.createElement('div');
+                item.className = "bg-slate-950/80 border border-slate-800/90 rounded-xl px-3 py-2 flex items-start sm:items-center gap-2.5 text-xs animate-fade-in";
+                item.innerHTML = `
+                    <span class="text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded border shrink-0 ${badgeClass}">${q.tagType}</span>
+                    <span class="text-slate-200 leading-snug">${q.summaryNote}</span>
+                `;
+                list.appendChild(item);
+            });
+        }
+
+        function renderQuestionTabsAndList() {
+            const currentCase = getCurrentCase();
+            const progress = getCurrentProgress();
+
+            // Actualizar estilos de pestañas
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                const isSelected = btn.dataset.tab === activeTabArea && !questionFilterText.trim();
+                if (isSelected) {
+                    btn.className = "tab-btn active flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all bg-emerald-600 text-white shadow";
+                } else {
+                    btn.className = "tab-btn flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all text-slate-400 hover:text-white hover:bg-slate-800/70";
+                }
+            });
+
+            const container = document.getElementById('questions-list-container');
+            container.innerHTML = '';
+
+            const normFilter = normalizeText(questionFilterText.trim());
+            const filteredQuestions = currentCase.questions.filter(q => {
+                if (normFilter) {
+                    return normalizeText(q.prompt).includes(normFilter) || normalizeText(q.area).includes(normFilter);
+                }
+                return q.area === activeTabArea;
+            });
+
+            if (filteredQuestions.length === 0) {
+                container.innerHTML = `<div class="text-center py-6 text-xs text-slate-500">No hay preguntas que coincidan con «${questionFilterText}». Prueba con otra palabra clave o navega por las pestañas.</div>`;
+                return;
+            }
+
+            filteredQuestions.forEach(q => {
+                const isAsked = progress.askedQuestionIds.includes(q.id);
+                const btn = document.createElement('button');
+                btn.type = 'button';
+
+                if (isAsked) {
+                    btn.disabled = true;
+                    btn.className = "w-full text-left bg-slate-950/50 border border-slate-800/60 rounded-xl p-3.5 flex items-center justify-between gap-3 opacity-70 cursor-default";
+                    btn.innerHTML = `
+                        <div class="flex items-center gap-2.5 text-xs sm:text-sm text-slate-400">
+                            <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-500 shrink-0"></i>
+                            <span class="line-through decoration-slate-600">${q.prompt}</span>
+                        </div>
+                        <span class="text-[11px] font-mono text-slate-500 shrink-0">Explorada</span>
+                    `;
+                } else {
+                    const outOfTime = progress.timeLeft < MINUTES_PER_ACTION;
+                    btn.disabled = outOfTime;
+                    btn.className = `w-full text-left bg-slate-950 hover:bg-slate-850 border border-slate-800 hover:border-emerald-500/50 rounded-xl p-3.5 flex items-center justify-between gap-3 transition-all group ${outOfTime ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`;
+                    btn.innerHTML = `
+                        <div class="flex items-start sm:items-center gap-2.5 text-xs sm:text-sm font-medium text-slate-200 group-hover:text-white">
+                            <i data-lucide="message-circle-question" class="w-4 h-4 text-emerald-400 shrink-0 mt-0.5 sm:mt-0"></i>
+                            <span>${q.prompt}</span>
+                        </div>
+                        <span class="text-[11px] font-mono bg-slate-900 group-hover:bg-emerald-500/15 text-slate-400 group-hover:text-emerald-300 border border-slate-800 group-hover:border-emerald-500/30 px-2 py-1 rounded-lg shrink-0 transition-colors">
+                            -5 min
+                        </span>
+                    `;
+                    btn.addEventListener('click', () => askClinicalQuestion(q.id));
+                }
+
+                container.appendChild(btn);
+            });
+        }
+
+        function renderTranscript() {
+            const currentCase = getCurrentCase();
+            const progress = getCurrentProgress();
+            const section = document.getElementById('transcript-section');
+            const list = document.getElementById('transcript-list');
+
+            if (progress.askedQuestionIds.length === 0) {
+                section.classList.add('hidden');
+                section.classList.remove('flex');
+                return;
+            }
+
+            section.classList.remove('hidden');
+            section.classList.add('flex');
+            document.getElementById('questions-asked-count').textContent = `${progress.askedQuestionIds.length} preguntas realizadas`;
+
+            list.innerHTML = '';
+            // Mostrar en orden cronológico inverso (la más reciente arriba)
+            const reversedIds = [...progress.askedQuestionIds].reverse();
+
+            reversedIds.forEach((qId, idx) => {
+                const q = currentCase.questions.find(item => item.id === qId);
+                if (!q) return;
+
+                const isNewest = idx === 0;
+                const card = document.createElement('div');
+                card.className = `bg-slate-900/90 border ${isNewest ? 'border-emerald-500/40 shadow-md' : 'border-slate-800'} rounded-2xl p-4 flex flex-col gap-2 ${isNewest ? 'animate-slide-up' : ''}`;
+
+                let badgeHtml = '';
+                if (q.isKey) {
+                    const colorClass = q.tagType === 'Descarte Clave'
+                        ? 'bg-sky-500/15 text-sky-300 border-sky-500/30'
+                        : 'bg-amber-500/15 text-amber-300 border-amber-500/30';
+                    badgeHtml = `<span class="text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded border ${colorClass}">${q.tagType}</span>`;
+                }
+
+                card.innerHTML = `
+                    <div class="flex items-start justify-between gap-2">
+                        <span class="text-xs font-semibold text-emerald-400">🩺 ${q.prompt}</span>
+                        ${badgeHtml}
+                    </div>
+                    <p class="text-sm text-slate-200 leading-relaxed pl-3 border-l-2 border-slate-700">${q.response}</p>
+                `;
+                list.appendChild(card);
+            });
+        }
+
+        function renderDiagnosisPanel() {
+            const currentCase = getCurrentCase();
+            const progress = getCurrentProgress();
+            const activeArea = document.getElementById('active-session-area');
+            const autopsyPanel = document.getElementById('autopsy-panel');
+
+            if (progress.status !== 'playing') {
+                activeArea.classList.add('hidden');
+                autopsyPanel.classList.remove('hidden');
+                renderSupervisionPanel();
+                return;
+            }
+
+            activeArea.classList.remove('hidden');
+            autopsyPanel.classList.add('hidden');
+
+            const remaining = MAX_DIAGNOSIS_ATTEMPTS - progress.failedGuesses.length;
+            document.getElementById('attempts-remaining-text').textContent = `${remaining} ${remaining === 1 ? 'intento disponible' : 'intentos disponibles'}`;
+
+            // Renderizar intentos fallidos previos
+            const failedContainer = document.getElementById('failed-guesses-container');
+            if (progress.failedGuesses.length === 0) {
+                failedContainer.classList.add('hidden');
+            } else {
+                failedContainer.classList.remove('hidden');
+                failedContainer.innerHTML = '';
+                const targetDisorder = getDisorderById(currentCase.targetId);
+
+                progress.failedGuesses.forEach(guessedId => {
+                    const guessed = getDisorderById(guessedId);
+                    const sameCat = guessed.category === targetDisorder.category;
+                    const div = document.createElement('div');
+
+                    if (sameCat) {
+                        div.className = "bg-amber-950/35 border border-amber-500/40 rounded-xl p-3 flex items-start gap-2.5 text-xs";
+                        div.innerHTML = `
+                            <span class="text-sm leading-none">🟨</span>
+                            <div>
+                                <strong class="text-amber-200">${guessed.name}</strong>
+                                <p class="text-amber-400/90 mt-0.5">Pertenece a la categoría correcta (<strong>${guessed.category}</strong>), pero revisa los criterios diferenciales.</p>
+                            </div>
+                        `;
+                    } else {
+                        div.className = "bg-slate-950 border border-slate-800 rounded-xl p-3 flex items-start gap-2.5 text-xs";
+                        div.innerHTML = `
+                            <span class="text-sm leading-none">⬜</span>
+                            <div>
+                                <strong class="text-slate-300 line-through">${guessed.name}</strong>
+                                <p class="text-slate-400 mt-0.5">Categoría distinta (${guessed.category}). Indaga más en la entrevista.</p>
+                            </div>
+                        `;
+                    }
+                    failedContainer.appendChild(div);
+                });
+            }
+        }
+
+        function calculateSessionMetrics() {
+            const currentCase = getCurrentCase();
+            const progress = getCurrentProgress();
+
+            const timeUsed = MAX_SESSION_MINUTES - progress.timeLeft;
+            const totalKey = currentCase.questions.filter(q => q.isKey).length;
+            const foundKey = currentCase.questions.filter(
+                q => q.isKey && progress.askedQuestionIds.includes(q.id)
+            ).length;
+
+            // Cálculo de eficiencia clínica (0 - 100%)
+            let efficiency = 0;
+            if (progress.status === 'won') {
+                const clueRatio = totalKey > 0 ? (foundKey / totalKey) : 1;
+                const timeBonus = Math.max(0, (progress.timeLeft / MAX_SESSION_MINUTES) * 35);
+                const attemptPenalty = progress.failedGuesses.length * 12;
+                efficiency = Math.min(100, Math.max(40, Math.round((clueRatio * 65) + timeBonus - attemptPenalty)));
+            } else {
+                efficiency = Math.round((foundKey / Math.max(1, totalKey)) * 35);
+            }
+
+            let rank = "En Formación";
+            if (progress.status === 'won') {
+                if (efficiency >= 85) rank = "🏅 Clínico Experto";
+                else if (efficiency >= 65) rank = "🩺 Residente Destacado";
+                else rank = "📋 Diagnóstico Certero";
+            } else {
+                rank = "📚 Caso de Estudio";
+            }
+
+            return { timeUsed, totalKey, foundKey, efficiency, rank };
+        }
+
+        function generateShareText() {
+            const currentCase = getCurrentCase();
+            const progress = getCurrentProgress();
+            const targetDisorder = getDisorderById(currentCase.targetId);
+            const metrics = calculateSessionMetrics();
+
+            const boxes = progress.failedGuesses.map(id => {
+                const d = getDisorderById(id);
+                return d && d.category === targetDisorder.category ? '🟨' : '⬜';
+            });
+
+            if (progress.status === 'won') {
+                boxes.push('🟩');
+            }
+            while (boxes.length < MAX_DIAGNOSIS_ATTEMPTS) {
+                boxes.push('▫️');
+            }
+
+            return `🏥 CliniDle #0${currentCase.id} | ⏱️ ${metrics.timeUsed}m | 🔍 ${metrics.foundKey}/${metrics.totalKey} | ${boxes.join('')} | 🔥 ${appState.stats.currentStreak}`;
+        }
+
+        function renderSupervisionPanel() {
+            const currentCase = getCurrentCase();
+            const progress = getCurrentProgress();
+            const targetDisorder = getDisorderById(currentCase.targetId);
+            const metrics = calculateSessionMetrics();
+
+            const banner = document.getElementById('autopsy-banner');
+            const resultBadge = document.getElementById('result-badge');
+
+            if (progress.status === 'won') {
+                banner.className = "p-5 sm:p-6 border-b border-slate-800 bg-gradient-to-br from-emerald-950/60 via-slate-900 to-slate-900";
+                resultBadge.textContent = "✓ Diagnóstico Acertado";
+                resultBadge.className = "text-xs font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30";
+            } else {
+                banner.className = "p-5 sm:p-6 border-b border-slate-800 bg-gradient-to-br from-rose-950/50 via-slate-900 to-slate-900";
+                resultBadge.textContent = "Consulta Finalizada";
+                resultBadge.className = "text-xs font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30";
+            }
+
+            document.getElementById('clinical-rank-badge').textContent = metrics.rank;
+            document.getElementById('autopsy-diagnosis').textContent = targetDisorder.name;
+            document.getElementById('autopsy-code').textContent = `CIE-10 / DSM-5-TR: ${targetDisorder.code}`;
+            document.getElementById('autopsy-category').textContent = targetDisorder.category;
+
+            document.getElementById('summary-time-used').textContent = `${metrics.timeUsed}/${MAX_SESSION_MINUTES} min`;
+            document.getElementById('summary-clues-found').textContent = `${metrics.foundKey}/${metrics.totalKey}`;
+            document.getElementById('summary-efficiency').textContent = `${metrics.efficiency}%`;
+            document.getElementById('share-preview-text').textContent = generateShareText();
+
+            // Auditoría de preguntas clave descubiertas vs omitidas
+            const auditList = document.getElementById('interview-audit-list');
+            auditList.innerHTML = '';
+            currentCase.questions.filter(q => q.isKey).forEach(q => {
+                const wasAsked = progress.askedQuestionIds.includes(q.id);
+                const div = document.createElement('div');
+                div.className = wasAsked
+                    ? "bg-emerald-950/25 border border-emerald-500/30 rounded-xl p-3 flex items-start gap-2.5"
+                    : "bg-slate-950/70 border border-slate-800 rounded-xl p-3 flex items-start gap-2.5 opacity-85";
+
+                div.innerHTML = `
+                    <span class="text-sm leading-none mt-0.5">${wasAsked ? '✅' : '⚠️'}</span>
+                    <div class="text-xs">
+                        <div class="font-semibold ${wasAsked ? 'text-emerald-300' : 'text-slate-300'}">
+                            ${wasAsked ? 'Explorada:' : 'Omitida en consulta:'} "${q.prompt}"
+                        </div>
+                        <p class="text-slate-400 mt-1">${q.summaryNote}</p>
+                    </div>
+                `;
+                auditList.appendChild(div);
+            });
+
+            // Criterios cumplidos
+            const criteriaList = document.getElementById('autopsy-criteria-list');
+            criteriaList.innerHTML = '';
+            currentCase.autopsy.criteriaMet.forEach(item => {
+                const li = document.createElement('li');
+                li.className = "flex items-start gap-2.5 bg-slate-950/60 border border-slate-800/80 p-3 rounded-xl";
+                li.innerHTML = `
+                    <span class="text-emerald-400 font-bold mt-0.5">•</span>
+                    <span>${item}</span>
+                `;
+                criteriaList.appendChild(li);
+            });
+
+            // Diagnóstico diferencial
+            const diffList = document.getElementById('autopsy-differential-list');
+            diffList.innerHTML = '';
+            currentCase.autopsy.differentials.forEach(diff => {
+                const div = document.createElement('div');
+                div.className = "bg-slate-950/60 border border-slate-800/80 p-3.5 rounded-xl";
+                div.innerHTML = `
+                    <div class="font-bold text-xs sm:text-sm text-amber-300 mb-1">¿Por qué NO era ${diff.disorder}?</div>
+                    <p class="text-xs sm:text-sm text-slate-300 leading-relaxed">${diff.reason}</p>
+                `;
+                diffList.appendChild(div);
+            });
+        }
+
+        function renderAll() {
+            renderCaseSelector();
+            renderHeaderAndTriage();
+            renderNotesLog();
+            renderQuestionTabsAndList();
+            renderTranscript();
+            renderDiagnosisPanel();
+            lucide.createIcons();
+        }
+
+        /**
+         * ACCIONES DE ENTREVISTA Y DIAGNÓSTICO
+         */
+        function askClinicalQuestion(questionId) {
+            const currentCase = getCurrentCase();
+            const progress = getCurrentProgress();
+            if (progress.status !== 'playing') return;
+            if (progress.askedQuestionIds.includes(questionId)) return;
+
+            if (progress.timeLeft < MINUTES_PER_ACTION) {
+                showToast("No queda tiempo de consulta. Emite tu diagnóstico definitivo.", "error");
+                return;
+            }
+
+            const questionObj = currentCase.questions.find(q => q.id === questionId);
+            if (!questionObj) return;
+
+            progress.askedQuestionIds.push(questionId);
+            progress.timeLeft = Math.max(0, progress.timeLeft - MINUTES_PER_ACTION);
+
+            if (questionObj.isKey) {
+                showToast(`¡${questionObj.tagType} añadido a tu bitácora!`, "key");
+            } else if (progress.timeLeft === 0) {
+                showToast("Tiempo de consulta agotado (45 min). Formula tu diagnóstico.", "error");
+            }
+
+            saveState();
+            renderAll();
+        }
+
+        // Pestañas de áreas clínicas
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                activeTabArea = btn.dataset.tab;
+                questionFilterText = '';
+                document.getElementById('question-filter-input').value = '';
+                document.getElementById('clear-question-filter').classList.add('hidden');
+                renderQuestionTabsAndList();
+                lucide.createIcons();
+            });
+        });
+
+        // Filtro rápido de preguntas
+        const qFilterInput = document.getElementById('question-filter-input');
+        const qFilterClear = document.getElementById('clear-question-filter');
+
+        qFilterInput.addEventListener('input', (e) => {
+            questionFilterText = e.target.value;
+            if (questionFilterText.length > 0) {
+                qFilterClear.classList.remove('hidden');
+            } else {
+                qFilterClear.classList.add('hidden');
+            }
+            renderQuestionTabsAndList();
+            lucide.createIcons();
+        });
+
+        qFilterClear.addEventListener('click', () => {
+            questionFilterText = '';
+            qFilterInput.value = '';
+            qFilterClear.classList.add('hidden');
+            renderQuestionTabsAndList();
+            lucide.createIcons();
+        });
+
+        /**
+         * LÓGICA DE AUTOCOMPLETADO Y ENVÍO DE DIAGNÓSTICOS
+         */
+        const searchInput = document.getElementById('diagnosis-search');
+        const dropdown = document.getElementById('autocomplete-dropdown');
+        const submitBtn = document.getElementById('btn-submit-guess');
+        const clearBtn = document.getElementById('clear-search');
+
+        function filterDisorders(query) {
+            const progress = getCurrentProgress();
+            const normQuery = normalizeText(query.trim());
+
+            const filtered = DSM_DISORDERS.filter(d => {
+                if (progress.failedGuesses.includes(d.id)) return false;
+                if (!normQuery) return true;
+                return normalizeText(d.name).includes(normQuery) || normalizeText(d.category).includes(normQuery);
+            });
+
+            dropdown.innerHTML = '';
+            if (filtered.length === 0) {
+                dropdown.innerHTML = `<div class="px-4 py-3 text-xs text-slate-400">No se encontraron trastornos coincidentes.</div>`;
+            } else {
+                filtered.forEach(disorder => {
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = "w-full text-left px-4 py-2.5 hover:bg-slate-800 transition-colors flex flex-col gap-0.5 focus:bg-slate-800 focus:outline-none";
+                    btn.innerHTML = `
+                        <span class="text-sm font-semibold text-slate-100">${disorder.name}</span>
+                        <span class="text-[11px] text-slate-400">${disorder.category}</span>
+                    `;
+                    btn.addEventListener('click', () => {
+                        selectedDisorder = disorder;
+                        searchInput.value = disorder.name;
+                        dropdown.classList.add('hidden');
+                        submitBtn.disabled = false;
+                        clearBtn.classList.remove('hidden');
+                    });
+                    dropdown.appendChild(btn);
+                });
+            }
+            dropdown.classList.remove('hidden');
+        }
+
+        searchInput.addEventListener('input', (e) => {
+            selectedDisorder = null;
+            submitBtn.disabled = true;
+            if (e.target.value.length > 0) {
+                clearBtn.classList.remove('hidden');
+            } else {
+                clearBtn.classList.add('hidden');
+            }
+            filterDisorders(e.target.value);
+        });
+
+        searchInput.addEventListener('focus', () => {
+            if (!selectedDisorder) {
+                filterDisorders(searchInput.value);
+            }
+        });
+
+        clearBtn.addEventListener('click', () => {
+            searchInput.value = '';
+            selectedDisorder = null;
+            submitBtn.disabled = true;
+            clearBtn.classList.add('hidden');
+            searchInput.focus();
+            filterDisorders('');
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!searchInput.contains(e.target) && !dropdown.contains(e.target)) {
+                dropdown.classList.add('hidden');
+            }
+        });
+
+        function handleGuessSubmission() {
+            if (!selectedDisorder) return;
+            const currentCase = getCurrentCase();
+            const progress = getCurrentProgress();
+            if (progress.status !== 'playing') return;
+
+            const guessedId = selectedDisorder.id;
+
+            // Limpiar input
+            searchInput.value = '';
+            selectedDisorder = null;
+            submitBtn.disabled = true;
+            clearBtn.classList.add('hidden');
+
+            if (guessedId === currentCase.targetId) {
+                progress.status = 'won';
+                appState.stats.played += 1;
+                appState.stats.won += 1;
+                appState.stats.currentStreak += 1;
+                if (appState.stats.currentStreak > appState.stats.maxStreak) {
+                    appState.stats.maxStreak = appState.stats.currentStreak;
+                }
+                showToast("¡Diagnóstico clínico acertado!");
+            } else {
+                progress.failedGuesses.push(guessedId);
+                progress.timeLeft = Math.max(0, progress.timeLeft - MINUTES_PER_ACTION);
+
+                if (progress.failedGuesses.length >= MAX_DIAGNOSIS_ATTEMPTS) {
+                    progress.status = 'lost';
+                    appState.stats.played += 1;
+                    appState.stats.currentStreak = 0;
+                    showToast("Se agotaron los 3 intentos de diagnóstico.", "error");
+                } else {
+                    const targetDisorder = getDisorderById(currentCase.targetId);
+                    const guessedDisorder = getDisorderById(guessedId);
+                    if (guessedDisorder.category === targetDisorder.category) {
+                        showToast("¡Misma categoría diagnóstica! Revisa los criterios diferenciales (-5 min).", "key");
+                    } else {
+                        showToast("Diagnóstico incorrecto (-5 min de consulta).", "error");
+                    }
+                }
+            }
+
+            saveState();
+            renderAll();
+            if (progress.status !== 'playing') {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+        }
+
+        function handleConcludeCase() {
+            const progress = getCurrentProgress();
+            if (progress.status !== 'playing') return;
+
+            progress.status = 'lost';
+            appState.stats.played += 1;
+            appState.stats.currentStreak = 0;
+            saveState();
+            renderAll();
+            showToast("Consulta cerrada. Revisa la supervisión clínica.", "error");
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        submitBtn.addEventListener('click', handleGuessSubmission);
+        document.getElementById('btn-conclude-case').addEventListener('click', handleConcludeCase);
+
+        // Cambio de caso en el selector
+        document.getElementById('case-selector').addEventListener('change', (e) => {
+            appState.currentCaseId = parseInt(e.target.value, 10);
+            selectedDisorder = null;
+            activeTabArea = 'anamnesis';
+            questionFilterText = '';
+            searchInput.value = '';
+            qFilterInput.value = '';
+            submitBtn.disabled = true;
+            clearBtn.classList.add('hidden');
+            qFilterClear.classList.add('hidden');
+            saveState();
+            renderAll();
+        });
+
+        // Botón Siguiente Caso en Supervisión
+        document.getElementById('btn-next-case').addEventListener('click', () => {
+            const currentIndex = CLINICAL_CASES.findIndex(c => c.id === appState.currentCaseId);
+            const nextIndex = (currentIndex + 1) % CLINICAL_CASES.length;
+            appState.currentCaseId = CLINICAL_CASES[nextIndex].id;
+            activeTabArea = 'anamnesis';
+            questionFilterText = '';
+            saveState();
+            renderAll();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+
+        // Botón Compartir Resultado (Compatible con iFrame usando execCommand)
+        document.getElementById('btn-share').addEventListener('click', () => {
+            const textToCopy = generateShareText() + "\nEntrena tu ojo clínico en CliniDle 🧠🩺";
+            const textArea = document.createElement("textarea");
+            textArea.value = textToCopy;
+            textArea.style.position = "fixed";
+            textArea.style.left = "-9999px";
+            document.body.appendChild(textArea);
+            textArea.select();
+
+            try {
+                document.execCommand('copy');
+                showToast("¡Resumen de supervisión copiado para compartir!");
+            } catch (err) {
+                showToast("No se pudo copiar automáticamente.", "error");
+            }
+            document.body.removeChild(textArea);
+        });
+
+        /**
+         * GESTIÓN DE MODALES (AYUDA Y ESTADÍSTICAS)
+         */
+        const modalHelp = document.getElementById('modal-help');
+        const modalStats = document.getElementById('modal-stats');
+
+        document.getElementById('btn-help').addEventListener('click', () => {
+            modalHelp.classList.remove('hidden');
+        });
+
+        document.getElementById('btn-stats').addEventListener('click', () => {
+            document.getElementById('stat-played').textContent = appState.stats.played;
+            const winRate = appState.stats.played > 0
+                ? Math.round((appState.stats.won / appState.stats.played) * 100)
+                : 0;
+            document.getElementById('stat-winrate').textContent = `${winRate}%`;
+            document.getElementById('stat-streak').textContent = appState.stats.currentStreak;
+            document.getElementById('stat-maxstreak').textContent = appState.stats.maxStreak;
+            modalStats.classList.remove('hidden');
+        });
+
+        document.querySelectorAll('.close-modal').forEach(btn => {
+            btn.addEventListener('click', () => {
+                modalHelp.classList.add('hidden');
+                modalStats.classList.add('hidden');
+            });
+        });
+
+        // Cerrar modales al hacer clic en el fondo oscuro
+        [modalHelp, modalStats].forEach(modal => {
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.classList.add('hidden');
+                }
+            });
+        });
+
+        // Reiniciar historial para pruebas
+        document.getElementById('btn-reset-progress').addEventListener('click', () => {
+            localStorage.removeItem(STORAGE_KEY);
+            appState = {
+                currentCaseId: 1,
+                stats: { played: 0, won: 0, currentStreak: 0, maxStreak: 0 },
+                casesProgress: {}
+            };
+            activeTabArea = 'anamnesis';
+            questionFilterText = '';
+            loadState();
+            saveState();
+            renderAll();
+            modalStats.classList.add('hidden');
+            showToast("Historial reiniciado correctamente.");
+        });
+
+        // Inicialización al cargar la página
+        window.addEventListener('DOMContentLoaded', () => {
+            loadState();
+            renderAll();
+        });
+    </script>
+</body>
+</html>
